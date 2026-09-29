@@ -87,17 +87,50 @@ class RAGEngine:
         return {"message": f"{filename} indexed successfully.", "document_id": document_id,
                 "filename": filename, "chunks": len(points), "duplicate": False}
 
-    def list_documents(self):
-        result = []
-        folder = Path("documents")
-        folder.mkdir(exist_ok=True)
-        for path in folder.glob("*.json"):
-            try:
-                with open(path, "r", encoding="utf-8") as f:
-                    result.append(json.load(f))
-            except Exception:
-                pass
-        return sorted(result, key=lambda x: x.get("filename", "").lower())
+   def list_documents(self):
+    documents = {}
+
+    try:
+        offset = None
+
+        while True:
+            points, next_offset = self.qdrant.scroll(
+                collection_name=self.collection,
+                offset=offset,
+                limit=100,
+                with_payload=True,
+                with_vectors=False,
+            )
+
+            for point in points:
+                payload = point.payload or {}
+
+                document_id = payload.get("document_id")
+                if not document_id:
+                    continue
+
+                if document_id not in documents:
+                    documents[document_id] = {
+                        "document_id": document_id,
+                        "filename": payload.get("source", "Unknown"),
+                        "file_type": "pdf",
+                        "chunk_count": 0,
+                    }
+
+                documents[document_id]["chunk_count"] += 1
+
+            if next_offset is None:
+                break
+
+            offset = next_offset
+
+    except Exception as e:
+        print(f"Error listing documents from Qdrant: {e}")
+
+    return sorted(
+        documents.values(),
+        key=lambda x: x.get("filename", "").lower()
+    )
 
     def delete_document(self, document_id):
         self.qdrant.delete(
