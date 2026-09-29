@@ -1,82 +1,639 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>RAG + General AI Assistant</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <title>RAG AI Assistant</title>
+
   <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
-<div class="app">
-  <h1>RAG + General AI Assistant</h1>
-  <p class="sub">Upload PDFs for document-grounded answers, or ask general questions.</p>
 
-  <section class="card">
-    <h2>Upload PDF</h2>
-    <input id="file" type="file" accept=".pdf">
-    <button onclick="upload()">Upload & Index</button>
-    <div id="uploadStatus"></div>
-  </section>
+<div class="app-shell">
 
-  <section class="card">
-    <h2>Chat</h2>
-    <div id="chat"></div>
-    <div class="row">
-      <input id="question" placeholder="Ask about your PDF or ask a general question...">
-      <button onclick="ask()">Send</button>
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+
+    <div class="brand">
+      <div class="brand-icon">✦</div>
+      <div>
+        <h2>RAG AI</h2>
+        <span>Intelligent Assistant</span>
+      </div>
     </div>
-  </section>
 
-  <section class="card">
-    <h2>Indexed Documents</h2>
-    <ul id="docs"></ul>
-  </section>
+    <button class="new-chat" onclick="newChat()">
+      <span>＋</span> New Chat
+    </button>
+
+    <div class="sidebar-section">
+      <div class="section-title">
+        <span>DOCUMENTS</span>
+      </div>
+
+      <div id="docs" class="documents-list">
+        <div class="empty-docs">No documents yet</div>
+      </div>
+    </div>
+
+    <div class="sidebar-bottom">
+      <div class="status-dot"></div>
+      <span>AI Assistant Online</span>
+    </div>
+
+  </aside>
+
+
+  <!-- MAIN AREA -->
+  <main class="main">
+
+    <!-- TOP BAR -->
+    <header class="topbar">
+
+      <div>
+        <h1>AI Assistant</h1>
+        <p>Ask questions or chat with your documents</p>
+      </div>
+
+      <div class="online-badge">
+        <span></span>
+        Online
+      </div>
+
+    </header>
+
+
+    <!-- UPLOAD AREA -->
+    <section class="upload-card">
+
+      <div class="upload-icon">
+        📄
+      </div>
+
+      <div class="upload-content">
+
+        <h3>Upload your document</h3>
+
+        <p>
+          Upload a PDF and ask questions based on its content.
+        </p>
+
+        <div class="upload-controls">
+
+          <label class="file-button">
+            Choose PDF
+            <input id="file" type="file" accept=".pdf">
+          </label>
+
+          <span id="fileName">No file selected</span>
+
+          <button class="upload-button" onclick="upload()">
+            Upload & Index
+          </button>
+
+        </div>
+
+        <div id="uploadStatus" class="upload-status"></div>
+
+      </div>
+
+    </section>
+
+
+    <!-- CHAT -->
+    <section class="chat-card">
+
+      <div class="chat-header">
+
+        <div class="ai-avatar">
+          ✦
+        </div>
+
+        <div>
+          <h2>AI Conversation</h2>
+          <p>Ask about your documents or anything else</p>
+        </div>
+
+      </div>
+
+
+      <div id="chat" class="chat-area">
+
+        <div class="welcome-message">
+
+          <div class="welcome-icon">
+            ✦
+          </div>
+
+          <h2>How can I help you?</h2>
+
+          <p>
+            Upload a PDF to ask document-based questions,
+            or ask me a general question.
+          </p>
+
+          <div class="suggestions">
+
+            <button onclick="useSuggestion('Summarize the uploaded document')">
+              📄 Summarize my document
+            </button>
+
+            <button onclick="useSuggestion('What are the main topics in the document?')">
+              🔍 Find main topics
+            </button>
+
+            <button onclick="useSuggestion('Explain artificial intelligence')">
+              💡 Ask general question
+            </button>
+
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- INPUT -->
+      <div class="input-area">
+
+        <input
+          id="question"
+          type="text"
+          placeholder="Message your AI assistant..."
+          autocomplete="off"
+        >
+
+        <button id="sendButton" class="send-button" onclick="ask()">
+          <span>Send</span>
+          ➤
+        </button>
+
+      </div>
+
+      <div class="input-hint">
+        Press <b>Enter</b> to send
+      </div>
+
+    </section>
+
+
+    <footer>
+      RAG AI Assistant • Powered by Gemini + Qdrant
+    </footer>
+
+  </main>
+
 </div>
+
+
 <script>
-async function upload() {
-  const f = document.getElementById("file").files[0];
-  if (!f) return;
-  const fd = new FormData();
-  fd.append("file", f);
-  document.getElementById("uploadStatus").textContent = "Indexing...";
-  const r = await fetch("/upload", {method:"POST", body:fd});
-  const d = await r.json();
-  document.getElementById("uploadStatus").textContent = d.message || d.error;
-  loadDocs();
-}
-async function ask() {
-  const q = document.getElementById("question").value.trim();
-  if (!q) return;
-  const chat = document.getElementById("chat");
-  chat.innerHTML += `<div class="user"><b>You:</b> ${escapeHtml(q)}</div>`;
-  document.getElementById("question").value = "";
-  const r = await fetch("/chat", {
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({question:q})
-  });
-  const d = await r.json();
-  chat.innerHTML += `<div class="bot"><b>AI:</b> ${escapeHtml(d.answer || d.error)}</div>`;
-  if (d.sources && d.sources.length) {
-    chat.innerHTML += `<div class="sources"><b>Sources:</b> ${d.sources.map(s =>
-      escapeHtml(s.source + (s.page ? " — Page " + s.page : ""))).join(", ")}</div>`;
-  }
-  chat.scrollTop = chat.scrollHeight;
-}
-async function loadDocs() {
-  const r = await fetch("/documents");
-  const docs = await r.json();
-  document.getElementById("docs").innerHTML =
-    docs.map(d => `<li>${escapeHtml(d.filename)} (${d.chunk_count} chunks)</li>`).join("");
-}
-function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, c => ({
-    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
-  }[c]));
-}
-document.getElementById("question").addEventListener("keydown", e => {
-  if (e.key === "Enter") ask();
+
+let isSending = false;
+
+
+/* =========================
+   FILE SELECTION
+========================= */
+
+document.getElementById("file").addEventListener("change", function () {
+
+  const file = this.files[0];
+
+  document.getElementById("fileName").textContent =
+    file ? file.name : "No file selected";
+
 });
+
+
+/* =========================
+   UPLOAD
+========================= */
+
+async function upload() {
+
+  const fileInput = document.getElementById("file");
+  const file = fileInput.files[0];
+
+  const status = document.getElementById("uploadStatus");
+
+  if (!file) {
+
+    status.textContent = "Please choose a PDF first.";
+    status.className = "upload-status error";
+
+    return;
+  }
+
+  const formData = new FormData();
+
+  formData.append("file", file);
+
+  status.textContent = "Uploading and indexing...";
+  status.className = "upload-status loading";
+
+  try {
+
+    const response = await fetch("/upload", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await response.json();
+
+    if (response.ok) {
+
+      status.textContent =
+        data.message || "Document indexed successfully.";
+
+      status.className = "upload-status success";
+
+      loadDocs();
+
+    } else {
+
+      status.textContent =
+        data.error || "Upload failed.";
+
+      status.className = "upload-status error";
+
+    }
+
+  } catch (error) {
+
+    status.textContent =
+      "Unable to upload the document.";
+
+    status.className = "upload-status error";
+
+  }
+
+}
+
+
+/* =========================
+   ASK AI
+========================= */
+
+async function ask() {
+
+  if (isSending) return;
+
+  const input = document.getElementById("question");
+
+  const question = input.value.trim();
+
+  if (!question) return;
+
+  isSending = true;
+
+  const chat = document.getElementById("chat");
+
+  /* Remove welcome message */
+
+  const welcome = chat.querySelector(".welcome-message");
+
+  if (welcome) {
+    welcome.remove();
+  }
+
+
+  /* USER MESSAGE */
+
+  const userMessage = document.createElement("div");
+
+  userMessage.className = "message-row user-row";
+
+  userMessage.innerHTML = `
+    <div class="message user-message">
+      ${escapeHtml(question)}
+    </div>
+  `;
+
+  chat.appendChild(userMessage);
+
+
+  input.value = "";
+
+  chat.scrollTop = chat.scrollHeight;
+
+
+  /* TYPING */
+
+  const typing = document.createElement("div");
+
+  typing.className = "message-row bot-row";
+
+  typing.innerHTML = `
+    <div class="bot-avatar">✦</div>
+    <div class="message bot-message typing">
+      <span></span>
+      <span></span>
+      <span></span>
+    </div>
+  `;
+
+  chat.appendChild(typing);
+
+  chat.scrollTop = chat.scrollHeight;
+
+
+  try {
+
+    const response = await fetch("/chat", {
+
+      method: "POST",
+
+      headers: {
+        "Content-Type": "application/json"
+      },
+
+      body: JSON.stringify({
+        question: question
+      })
+
+    });
+
+
+    const data = await response.json();
+
+
+    typing.remove();
+
+
+    /* AI MESSAGE */
+
+    const botRow = document.createElement("div");
+
+    botRow.className = "message-row bot-row";
+
+
+    let sourcesHTML = "";
+
+
+    if (data.sources && data.sources.length) {
+
+      sourcesHTML = `
+        <div class="sources-box">
+
+          <div class="sources-title">
+            📚 Sources
+          </div>
+
+          ${data.sources.map(source => `
+            <div class="source-item">
+              ${escapeHtml(
+                source.source +
+                (source.page ? " — Page " + source.page : "")
+              )}
+            </div>
+          `).join("")}
+
+        </div>
+      `;
+
+    }
+
+
+    botRow.innerHTML = `
+
+      <div class="bot-avatar">
+        ✦
+      </div>
+
+      <div>
+
+        <div class="message bot-message">
+          ${formatAnswer(data.answer || data.error)}
+        </div>
+
+        ${sourcesHTML}
+
+      </div>
+    `;
+
+
+    chat.appendChild(botRow);
+
+  }
+
+  catch (error) {
+
+    typing.remove();
+
+    const errorRow = document.createElement("div");
+
+    errorRow.className = "message-row bot-row";
+
+    errorRow.innerHTML = `
+
+      <div class="bot-avatar">
+        ✦
+      </div>
+
+      <div class="message bot-message error-message">
+        Unable to generate the answer right now.
+      </div>
+
+    `;
+
+    chat.appendChild(errorRow);
+
+  }
+
+
+  isSending = false;
+
+  chat.scrollTop = chat.scrollHeight;
+
+}
+
+
+/* =========================
+   NEW CHAT
+========================= */
+
+function newChat() {
+
+  const chat = document.getElementById("chat");
+
+  chat.innerHTML = `
+
+    <div class="welcome-message">
+
+      <div class="welcome-icon">
+        ✦
+      </div>
+
+      <h2>How can I help you?</h2>
+
+      <p>
+        Upload a PDF to ask document-based questions,
+        or ask me a general question.
+      </p>
+
+      <div class="suggestions">
+
+        <button onclick="useSuggestion('Summarize the uploaded document')">
+          📄 Summarize my document
+        </button>
+
+        <button onclick="useSuggestion('What are the main topics in the document?')">
+          🔍 Find main topics
+        </button>
+
+        <button onclick="useSuggestion('Explain artificial intelligence')">
+          💡 Ask general question
+        </button>
+
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+
+/* =========================
+   SUGGESTION
+========================= */
+
+function useSuggestion(text) {
+
+  const input = document.getElementById("question");
+
+  input.value = text;
+
+  input.focus();
+
+}
+
+
+/* =========================
+   LOAD DOCUMENTS
+========================= */
+
+async function loadDocs() {
+
+  try {
+
+    const response = await fetch("/documents");
+
+    const docs = await response.json();
+
+    const container =
+      document.getElementById("docs");
+
+
+    if (!docs.length) {
+
+      container.innerHTML =
+        `<div class="empty-docs">No documents yet</div>`;
+
+      return;
+
+    }
+
+
+    container.innerHTML = docs.map(doc => `
+
+      <div class="document-item">
+
+        <div class="document-icon">
+          PDF
+        </div>
+
+        <div class="document-info">
+
+          <div class="document-name">
+            ${escapeHtml(doc.filename)}
+          </div>
+
+          <div class="document-meta">
+            ${doc.chunk_count} chunks
+          </div>
+
+        </div>
+
+      </div>
+
+    `).join("");
+
+  }
+
+  catch (error) {
+
+    console.error("Unable to load documents", error);
+
+  }
+
+}
+
+
+/* =========================
+   FORMAT ANSWER
+========================= */
+
+function formatAnswer(text) {
+
+  if (!text) return "";
+
+  return escapeHtml(text)
+    .replace(/\n\n/g, "<br><br>")
+    .replace(/\n/g, "<br>");
+
+}
+
+
+/* =========================
+   ESCAPE HTML
+========================= */
+
+function escapeHtml(value) {
+
+  return String(value).replace(/[&<>"']/g, function (char) {
+
+    return {
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#039;"
+    }[char];
+
+  });
+
+}
+
+
+/* =========================
+   ENTER TO SEND
+========================= */
+
+document
+  .getElementById("question")
+  .addEventListener("keydown", function(event) {
+
+    if (event.key === "Enter") {
+
+      event.preventDefault();
+
+      ask();
+
+    }
+
+  });
+
+
+/* =========================
+   INITIAL LOAD
+========================= */
+
 loadDocs();
+
 </script>
+
 </body>
 </html>
