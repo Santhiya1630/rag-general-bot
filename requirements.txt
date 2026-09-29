@@ -1,0 +1,6 @@
+Flask
+gunicorn
+google-genai
+qdrant-client
+PyMuPDF
+fastembed

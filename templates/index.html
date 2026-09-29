@@ -1,0 +1,82 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>RAG + General AI Assistant</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="app">
+  <h1>RAG + General AI Assistant</h1>
+  <p class="sub">Upload PDFs for document-grounded answers, or ask general questions.</p>
+
+  <section class="card">
+    <h2>Upload PDF</h2>
+    <input id="file" type="file" accept=".pdf">
+    <button onclick="upload()">Upload & Index</button>
+    <div id="uploadStatus"></div>
+  </section>
+
+  <section class="card">
+    <h2>Chat</h2>
+    <div id="chat"></div>
+    <div class="row">
+      <input id="question" placeholder="Ask about your PDF or ask a general question...">
+      <button onclick="ask()">Send</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Indexed Documents</h2>
+    <ul id="docs"></ul>
+  </section>
+</div>
+<script>
+async function upload() {
+  const f = document.getElementById("file").files[0];
+  if (!f) return;
+  const fd = new FormData();
+  fd.append("file", f);
+  document.getElementById("uploadStatus").textContent = "Indexing...";
+  const r = await fetch("/upload", {method:"POST", body:fd});
+  const d = await r.json();
+  document.getElementById("uploadStatus").textContent = d.message || d.error;
+  loadDocs();
+}
+async function ask() {
+  const q = document.getElementById("question").value.trim();
+  if (!q) return;
+  const chat = document.getElementById("chat");
+  chat.innerHTML += `<div class="user"><b>You:</b> ${escapeHtml(q)}</div>`;
+  document.getElementById("question").value = "";
+  const r = await fetch("/chat", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({question:q})
+  });
+  const d = await r.json();
+  chat.innerHTML += `<div class="bot"><b>AI:</b> ${escapeHtml(d.answer || d.error)}</div>`;
+  if (d.sources && d.sources.length) {
+    chat.innerHTML += `<div class="sources"><b>Sources:</b> ${d.sources.map(s =>
+      escapeHtml(s.source + (s.page ? " — Page " + s.page : ""))).join(", ")}</div>`;
+  }
+  chat.scrollTop = chat.scrollHeight;
+}
+async function loadDocs() {
+  const r = await fetch("/documents");
+  const docs = await r.json();
+  document.getElementById("docs").innerHTML =
+    docs.map(d => `<li>${escapeHtml(d.filename)} (${d.chunk_count} chunks)</li>`).join("");
+}
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+  }[c]));
+}
+document.getElementById("question").addEventListener("keydown", e => {
+  if (e.key === "Enter") ask();
+});
+loadDocs();
+</script>
+</body>
+</html>

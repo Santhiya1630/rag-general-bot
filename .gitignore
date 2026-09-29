@@ -1,0 +1,8 @@
+.venv/
+.venv2/
+__pycache__/
+*.pyc
+.env
+qdrant_storage/
+chat_history/
+documents/*.pdf
