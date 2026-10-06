@@ -1,109 +1,341 @@
+```html
 <!doctype html>
 <html lang="en">
+
 <head>
+
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1"
+  >
 
   <title>RAG AI Assistant</title>
 
-  <link rel="stylesheet" href="/static/style.css">
+  <link
+    rel="stylesheet"
+    href="/static/style.css"
+  >
+
+  <style>
+
+    /* =========================
+       CHAT HISTORY
+    ========================= */
+
+    .history-section {
+      margin-top: 22px;
+      margin-bottom: 20px;
+    }
+
+    .history-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #8b8fa3;
+      margin-bottom: 10px;
+      padding: 0 4px;
+    }
+
+    .history-list {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      max-height: 260px;
+      overflow-y: auto;
+    }
+
+    .history-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.2s;
+      min-width: 0;
+    }
+
+    .history-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .history-item.active {
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .history-chat-icon {
+      flex-shrink: 0;
+      font-size: 13px;
+    }
+
+    .history-name {
+      flex: 1;
+      min-width: 0;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .delete-chat {
+      border: none;
+      background: transparent;
+      color: #999;
+      cursor: pointer;
+      padding: 3px;
+      opacity: 0;
+      transition: 0.2s;
+    }
+
+    .history-item:hover .delete-chat {
+      opacity: 1;
+    }
+
+    .delete-chat:hover {
+      color: #ff6b6b;
+    }
+
+    .empty-history {
+      font-size: 12px;
+      color: #8b8fa3;
+      padding: 6px 4px;
+    }
+
+  </style>
+
 </head>
+
 
 <body>
 
 <div class="app-shell">
 
-  <!-- SIDEBAR -->
+
+  <!-- =========================
+       SIDEBAR
+  ========================= -->
+
   <aside class="sidebar">
 
+
+    <!-- BRAND -->
+
     <div class="brand">
-      <div class="brand-icon">✦</div>
-      <div>
-        <h2>RAG AI</h2>
-        <span>Intelligent Assistant</span>
+
+      <div class="brand-icon">
+        ✦
       </div>
+
+      <div>
+
+        <h2>RAG AI</h2>
+
+        <span>
+          Intelligent Assistant
+        </span>
+
+      </div>
+
     </div>
 
-    <button class="new-chat" onclick="newChat()">
-      <span>＋</span> New Chat
+
+    <!-- EXISTING NEW CHAT -->
+
+    <button
+      class="new-chat"
+      onclick="newChat()"
+    >
+
+      <span>＋</span>
+
+      New Chat
+
     </button>
 
-    <div class="sidebar-section">
-      <div class="section-title">
-        <span>DOCUMENTS</span>
+
+    <!-- =========================
+         CHAT HISTORY
+    ========================= -->
+
+    <div class="history-section">
+
+      <div class="history-title">
+        CHAT HISTORY
       </div>
 
-      <div id="docs" class="documents-list">
-        <div class="empty-docs">No documents yet</div>
+      <div
+        id="history"
+        class="history-list"
+      >
+
+        <div class="empty-history">
+          No chats yet
+        </div>
+
       </div>
+
     </div>
+
+
+    <!-- =========================
+         DOCUMENTS
+    ========================= -->
+
+    <div class="sidebar-section">
+
+      <div class="section-title">
+
+        <span>
+          DOCUMENTS
+        </span>
+
+      </div>
+
+
+      <div
+        id="docs"
+        class="documents-list"
+      >
+
+        <div class="empty-docs">
+          No documents yet
+        </div>
+
+      </div>
+
+    </div>
+
+
+    <!-- STATUS -->
 
     <div class="sidebar-bottom">
+
       <div class="status-dot"></div>
-      <span>AI Assistant Online</span>
+
+      <span>
+        AI Assistant Online
+      </span>
+
     </div>
+
 
   </aside>
 
 
-  <!-- MAIN AREA -->
+
+  <!-- =========================
+       MAIN
+  ========================= -->
+
   <main class="main">
 
+
     <!-- TOP BAR -->
+
     <header class="topbar">
 
       <div>
-        <h1>AI Assistant</h1>
-        <p>Ask questions or chat with your documents</p>
+
+        <h1>
+          AI Assistant
+        </h1>
+
+        <p>
+          Ask questions or chat with your documents
+        </p>
+
       </div>
 
+
       <div class="online-badge">
+
         <span></span>
+
         Online
+
       </div>
 
     </header>
 
 
-    <!-- UPLOAD AREA -->
+
+    <!-- =========================
+         UPLOAD
+    ========================= -->
+
     <section class="upload-card">
 
       <div class="upload-icon">
         📄
       </div>
 
+
       <div class="upload-content">
 
-        <h3>Upload your document</h3>
+        <h3>
+          Upload your document
+        </h3>
+
 
         <p>
           Upload a PDF and ask questions based on its content.
         </p>
 
+
         <div class="upload-controls">
 
+
           <label class="file-button">
+
             Choose PDF
-            <input id="file" type="file" accept=".pdf">
+
+            <input
+              id="file"
+              type="file"
+              accept=".pdf"
+            >
+
           </label>
 
-          <span id="fileName">No file selected</span>
 
-          <button class="upload-button" onclick="upload()">
+          <span id="fileName">
+            No file selected
+          </span>
+
+
+          <button
+            class="upload-button"
+            onclick="upload()"
+          >
+
             Upload & Index
+
           </button>
+
 
         </div>
 
-        <div id="uploadStatus" class="upload-status"></div>
+
+        <div
+          id="uploadStatus"
+          class="upload-status"
+        ></div>
+
 
       </div>
 
     </section>
 
 
-    <!-- CHAT -->
+
+    <!-- =========================
+         CHAT
+    ========================= -->
+
     <section class="chat-card">
+
 
       <div class="chat-header">
 
@@ -111,15 +343,27 @@
           ✦
         </div>
 
+
         <div>
-          <h2>AI Conversation</h2>
-          <p>Ask about your documents or anything else</p>
+
+          <h2>
+            AI Conversation
+          </h2>
+
+          <p>
+            Ask about your documents or anything else
+          </p>
+
         </div>
 
       </div>
 
 
-      <div id="chat" class="chat-area">
+
+      <div
+        id="chat"
+        class="chat-area"
+      >
 
         <div class="welcome-message">
 
@@ -127,26 +371,45 @@
             ✦
           </div>
 
-          <h2>How can I help you?</h2>
+          <h2>
+            How can I help you?
+          </h2>
 
           <p>
             Upload a PDF to ask document-based questions,
             or ask me a general question.
           </p>
 
+
           <div class="suggestions">
 
-            <button onclick="useSuggestion('Summarize the uploaded document')">
+
+            <button
+              onclick="useSuggestion('Summarize the uploaded document')"
+            >
+
               📄 Summarize my document
+
             </button>
 
-            <button onclick="useSuggestion('What are the main topics in the document?')">
+
+            <button
+              onclick="useSuggestion('What are the main topics in the document?')"
+            >
+
               🔍 Find main topics
+
             </button>
 
-            <button onclick="useSuggestion('Explain artificial intelligence')">
+
+            <button
+              onclick="useSuggestion('Explain artificial intelligence')"
+            >
+
               💡 Ask general question
+
             </button>
+
 
           </div>
 
@@ -155,7 +418,9 @@
       </div>
 
 
+
       <!-- INPUT -->
+
       <div class="input-area">
 
         <input
@@ -165,134 +430,223 @@
           autocomplete="off"
         >
 
-        <button id="sendButton" class="send-button" onclick="ask()">
-          <span>Send</span>
+
+        <button
+          id="sendButton"
+          class="send-button"
+          onclick="ask()"
+        >
+
+          <span>
+            Send
+          </span>
+
           ➤
+
         </button>
 
       </div>
 
+
       <div class="input-hint">
+
         Press <b>Enter</b> to send
+
       </div>
+
 
     </section>
 
 
+
     <footer>
+
       RAG AI Assistant • Powered by Gemini + Qdrant
+
     </footer>
+
 
   </main>
 
 </div>
 
 
+
 <script>
+
+
+/* =========================================================
+   GLOBAL
+========================================================= */
 
 let isSending = false;
 
+let currentChatId = null;
 
-/* =========================
+
+/* =========================================================
    FILE SELECTION
-========================= */
+========================================================= */
 
-document.getElementById("file").addEventListener("change", function () {
+document
+  .getElementById("file")
+  .addEventListener(
+    "change",
+    function () {
 
-  const file = this.files[0];
+      const file = this.files[0];
 
-  document.getElementById("fileName").textContent =
-    file ? file.name : "No file selected";
+      document.getElementById(
+        "fileName"
+      ).textContent =
+        file
+          ? file.name
+          : "No file selected";
 
-});
+    }
+  );
 
 
-/* =========================
+/* =========================================================
    UPLOAD
-========================= */
+========================================================= */
 
 async function upload() {
 
-  const fileInput = document.getElementById("file");
-  const file = fileInput.files[0];
+  const fileInput =
+    document.getElementById("file");
 
-  const status = document.getElementById("uploadStatus");
+  const file =
+    fileInput.files[0];
+
+  const status =
+    document.getElementById(
+      "uploadStatus"
+    );
+
 
   if (!file) {
 
-    status.textContent = "Please choose a PDF first.";
-    status.className = "upload-status error";
+    status.textContent =
+      "Please choose a PDF first.";
+
+    status.className =
+      "upload-status error";
 
     return;
+
   }
 
-  const formData = new FormData();
 
-  formData.append("file", file);
+  const formData =
+    new FormData();
 
-  status.textContent = "Uploading and indexing...";
-  status.className = "upload-status loading";
+  formData.append(
+    "file",
+    file
+  );
+
+
+  status.textContent =
+    "Uploading and indexing...";
+
+  status.className =
+    "upload-status loading";
+
 
   try {
 
-    const response = await fetch("/upload", {
-      method: "POST",
-      body: formData
-    });
+    const response =
+      await fetch(
+        "/upload",
+        {
+          method: "POST",
+          body: formData
+        }
+      );
 
-    const data = await response.json();
+
+    const data =
+      await response.json();
+
 
     if (response.ok) {
 
       status.textContent =
-        data.message || "Document indexed successfully.";
+        data.message ||
+        "Document indexed successfully.";
 
-      status.className = "upload-status success";
+      status.className =
+        "upload-status success";
 
       loadDocs();
 
-    } else {
+    }
+
+    else {
 
       status.textContent =
-        data.error || "Upload failed.";
+        data.error ||
+        "Upload failed.";
 
-      status.className = "upload-status error";
+      status.className =
+        "upload-status error";
 
     }
 
-  } catch (error) {
+  }
+
+  catch (error) {
 
     status.textContent =
       "Unable to upload the document.";
 
-    status.className = "upload-status error";
+    status.className =
+      "upload-status error";
 
   }
 
 }
 
 
-/* =========================
+/* =========================================================
    ASK AI
-========================= */
+========================================================= */
 
 async function ask() {
 
   if (isSending) return;
 
-  const input = document.getElementById("question");
 
-  const question = input.value.trim();
+  const input =
+    document.getElementById(
+      "question"
+    );
+
+
+  const question =
+    input.value.trim();
+
 
   if (!question) return;
 
+
   isSending = true;
 
-  const chat = document.getElementById("chat");
 
-  /* Remove welcome message */
+  const chat =
+    document.getElementById(
+      "chat"
+    );
 
-  const welcome = chat.querySelector(".welcome-message");
+
+  /* Remove welcome */
+
+  const welcome =
+    chat.querySelector(
+      ".welcome-message"
+    );
+
 
   if (welcome) {
     welcome.remove();
@@ -301,96 +655,182 @@ async function ask() {
 
   /* USER MESSAGE */
 
-  const userMessage = document.createElement("div");
+  const userMessage =
+    document.createElement(
+      "div"
+    );
 
-  userMessage.className = "message-row user-row";
+
+  userMessage.className =
+    "message-row user-row";
+
 
   userMessage.innerHTML = `
+
     <div class="message user-message">
+
       ${escapeHtml(question)}
+
     </div>
+
   `;
 
-  chat.appendChild(userMessage);
+
+  chat.appendChild(
+    userMessage
+  );
 
 
   input.value = "";
 
-  chat.scrollTop = chat.scrollHeight;
+
+  chat.scrollTop =
+    chat.scrollHeight;
 
 
   /* TYPING */
 
-  const typing = document.createElement("div");
+  const typing =
+    document.createElement(
+      "div"
+    );
 
-  typing.className = "message-row bot-row";
+
+  typing.className =
+    "message-row bot-row";
+
 
   typing.innerHTML = `
-    <div class="bot-avatar">✦</div>
-    <div class="message bot-message typing">
-      <span></span>
-      <span></span>
-      <span></span>
+
+    <div class="bot-avatar">
+      ✦
     </div>
+
+    <div class="message bot-message typing">
+
+      <span></span>
+      <span></span>
+      <span></span>
+
+    </div>
+
   `;
 
-  chat.appendChild(typing);
 
-  chat.scrollTop = chat.scrollHeight;
+  chat.appendChild(
+    typing
+  );
+
+
+  chat.scrollTop =
+    chat.scrollHeight;
 
 
   try {
 
-    const response = await fetch("/chat", {
+    const response =
+      await fetch(
+        "/chat",
+        {
 
-      method: "POST",
+          method: "POST",
 
-      headers: {
-        "Content-Type": "application/json"
-      },
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
 
-      body: JSON.stringify({
-        question: question
-      })
+          body: JSON.stringify({
 
-    });
+            question:
+              question,
+
+            chat_id:
+              currentChatId
+
+          })
+
+        }
+      );
 
 
-    const data = await response.json();
+    const data =
+      await response.json();
 
 
     typing.remove();
 
 
+    if (!response.ok) {
+
+      throw new Error(
+        data.error ||
+        "Unable to generate answer."
+      );
+
+    }
+
+
+    /* SAVE CHAT ID */
+
+    if (data.chat_id) {
+
+      currentChatId =
+        data.chat_id;
+
+    }
+
+
     /* AI MESSAGE */
 
-    const botRow = document.createElement("div");
+    const botRow =
+      document.createElement(
+        "div"
+      );
 
-    botRow.className = "message-row bot-row";
+
+    botRow.className =
+      "message-row bot-row";
 
 
     let sourcesHTML = "";
 
 
-    if (data.sources && data.sources.length) {
+    if (
+      data.sources &&
+      data.sources.length
+    ) {
 
       sourcesHTML = `
+
         <div class="sources-box">
 
           <div class="sources-title">
             📚 Sources
           </div>
 
-          ${data.sources.map(source => `
-            <div class="source-item">
-              ${escapeHtml(
-                source.source +
-                (source.page ? " — Page " + source.page : "")
-              )}
-            </div>
-          `).join("")}
+          ${data.sources.map(
+            source => `
+
+              <div class="source-item">
+
+                ${escapeHtml(
+                  source.source +
+                  (
+                    source.page
+                      ? " — Page " +
+                        source.page
+                      : ""
+                  )
+                )}
+
+              </div>
+
+            `
+          ).join("")}
 
         </div>
+
       `;
 
     }
@@ -402,29 +842,52 @@ async function ask() {
         ✦
       </div>
 
+
       <div>
 
         <div class="message bot-message">
-          ${formatAnswer(data.answer || data.error)}
+
+          ${formatAnswer(
+            data.answer ||
+            data.error
+          )}
+
         </div>
+
 
         ${sourcesHTML}
 
       </div>
+
     `;
 
 
-    chat.appendChild(botRow);
+    chat.appendChild(
+      botRow
+    );
+
+
+    /* REFRESH HISTORY */
+
+    loadHistory();
 
   }
+
 
   catch (error) {
 
     typing.remove();
 
-    const errorRow = document.createElement("div");
 
-    errorRow.className = "message-row bot-row";
+    const errorRow =
+      document.createElement(
+        "div"
+      );
+
+
+    errorRow.className =
+      "message-row bot-row";
+
 
     errorRow.innerHTML = `
 
@@ -433,30 +896,49 @@ async function ask() {
       </div>
 
       <div class="message bot-message error-message">
-        Unable to generate the answer right now.
+
+        ${escapeHtml(
+          error.message ||
+          "Unable to generate the answer right now."
+        )}
+
       </div>
 
     `;
 
-    chat.appendChild(errorRow);
+
+    chat.appendChild(
+      errorRow
+    );
 
   }
 
 
   isSending = false;
 
-  chat.scrollTop = chat.scrollHeight;
+
+  chat.scrollTop =
+    chat.scrollHeight;
 
 }
 
 
-/* =========================
+/* =========================================================
    NEW CHAT
-========================= */
+========================================================= */
 
 function newChat() {
 
-  const chat = document.getElementById("chat");
+  /* Do NOT create an empty database chat */
+
+  currentChatId = null;
+
+
+  const chat =
+    document.getElementById(
+      "chat"
+    );
+
 
   chat.innerHTML = `
 
@@ -466,26 +948,47 @@ function newChat() {
         ✦
       </div>
 
-      <h2>How can I help you?</h2>
+
+      <h2>
+        How can I help you?
+      </h2>
+
 
       <p>
         Upload a PDF to ask document-based questions,
         or ask me a general question.
       </p>
 
+
       <div class="suggestions">
 
-        <button onclick="useSuggestion('Summarize the uploaded document')">
+
+        <button
+          onclick="useSuggestion('Summarize the uploaded document')"
+        >
+
           📄 Summarize my document
+
         </button>
 
-        <button onclick="useSuggestion('What are the main topics in the document?')">
+
+        <button
+          onclick="useSuggestion('What are the main topics in the document?')"
+        >
+
           🔍 Find main topics
+
         </button>
 
-        <button onclick="useSuggestion('Explain artificial intelligence')">
+
+        <button
+          onclick="useSuggestion('Explain artificial intelligence')"
+        >
+
           💡 Ask general question
+
         </button>
+
 
       </div>
 
@@ -493,147 +996,547 @@ function newChat() {
 
   `;
 
-}
 
-
-/* =========================
-   SUGGESTION
-========================= */
-
-function useSuggestion(text) {
-
-  const input = document.getElementById("question");
-
-  input.value = text;
-
-  input.focus();
+  loadHistory();
 
 }
 
 
-/* =========================
-   LOAD DOCUMENTS
-========================= */
+/* =========================================================
+   LOAD HISTORY
+========================================================= */
 
-async function loadDocs() {
+async function loadHistory() {
 
   try {
 
-    const response = await fetch("/documents");
+    const response =
+      await fetch(
+        "/chats"
+      );
 
-    const docs = await response.json();
+
+    const chats =
+      await response.json();
+
 
     const container =
-      document.getElementById("docs");
+      document.getElementById(
+        "history"
+      );
 
 
-    if (!docs.length) {
+    if (!chats.length) {
 
-      container.innerHTML =
-        `<div class="empty-docs">No documents yet</div>`;
+      container.innerHTML = `
+
+        <div class="empty-history">
+          No chats yet
+        </div>
+
+      `;
 
       return;
 
     }
 
 
-    container.innerHTML = docs.map(doc => `
+    container.innerHTML =
+      chats.map(
+        chat => `
 
-      <div class="document-item">
+          <div
+            class="history-item ${
+              Number(chat.id) ===
+              Number(currentChatId)
+                ? "active"
+                : ""
+            }"
+            onclick="loadChat(${chat.id})"
+          >
 
-        <div class="document-icon">
-          PDF
-        </div>
+            <span class="history-chat-icon">
+              💬
+            </span>
 
-        <div class="document-info">
 
-          <div class="document-name">
-            ${escapeHtml(doc.filename)}
+            <span class="history-name">
+
+              ${escapeHtml(
+                chat.title
+              )}
+
+            </span>
+
+
+            <button
+              class="delete-chat"
+              onclick="deleteChat(
+                event,
+                ${chat.id}
+              )"
+              title="Delete chat"
+            >
+
+              🗑
+
+            </button>
+
           </div>
 
-          <div class="document-meta">
-            ${doc.chunk_count} chunks
-          </div>
-
-        </div>
-
-      </div>
-
-    `).join("");
+        `
+      ).join("");
 
   }
 
   catch (error) {
 
-    console.error("Unable to load documents", error);
+    console.error(
+      "Unable to load chat history",
+      error
+    );
 
   }
 
 }
 
 
-/* =========================
+/* =========================================================
+   LOAD OLD CHAT
+========================================================= */
+
+async function loadChat(chatId) {
+
+  try {
+
+    const response =
+      await fetch(
+        `/chats/${chatId}`
+      );
+
+
+    const data =
+      await response.json();
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        data.error ||
+        "Unable to load chat."
+      );
+
+    }
+
+
+    currentChatId =
+      data.id;
+
+
+    const chat =
+      document.getElementById(
+        "chat"
+      );
+
+
+    chat.innerHTML = "";
+
+
+    if (!data.messages.length) {
+
+      newChat();
+
+      return;
+
+    }
+
+
+    data.messages.forEach(
+      message => {
+
+        addMessageToUI(
+          message.role,
+          message.content
+        );
+
+      }
+    );
+
+
+    loadHistory();
+
+
+    chat.scrollTop =
+      chat.scrollHeight;
+
+  }
+
+  catch (error) {
+
+    console.error(
+      "Unable to load chat",
+      error
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   DISPLAY SAVED MESSAGE
+========================================================= */
+
+function addMessageToUI(
+  role,
+  content
+) {
+
+  const chat =
+    document.getElementById(
+      "chat"
+    );
+
+
+  if (role === "user") {
+
+    const userMessage =
+      document.createElement(
+        "div"
+      );
+
+
+    userMessage.className =
+      "message-row user-row";
+
+
+    userMessage.innerHTML = `
+
+      <div class="message user-message">
+
+        ${escapeHtml(
+          content
+        )}
+
+      </div>
+
+    `;
+
+
+    chat.appendChild(
+      userMessage
+    );
+
+  }
+
+  else {
+
+    const botRow =
+      document.createElement(
+        "div"
+      );
+
+
+    botRow.className =
+      "message-row bot-row";
+
+
+    botRow.innerHTML = `
+
+      <div class="bot-avatar">
+        ✦
+      </div>
+
+
+      <div class="message bot-message">
+
+        ${formatAnswer(
+          content
+        )}
+
+      </div>
+
+    `;
+
+
+    chat.appendChild(
+      botRow
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   DELETE CHAT
+========================================================= */
+
+async function deleteChat(
+  event,
+  chatId
+) {
+
+  event.stopPropagation();
+
+
+  const confirmed =
+    confirm(
+      "Delete this chat?"
+    );
+
+
+  if (!confirmed) return;
+
+
+  try {
+
+    const response =
+      await fetch(
+        `/chats/${chatId}`,
+        {
+          method: "DELETE"
+        }
+      );
+
+
+    const data =
+      await response.json();
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        data.error ||
+        "Unable to delete chat."
+      );
+
+    }
+
+
+    if (
+      Number(currentChatId) ===
+      Number(chatId)
+    ) {
+
+      currentChatId = null;
+
+      newChat();
+
+    }
+
+
+    loadHistory();
+
+  }
+
+  catch (error) {
+
+    alert(
+      error.message ||
+      "Unable to delete chat."
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   SUGGESTION
+========================================================= */
+
+function useSuggestion(text) {
+
+  const input =
+    document.getElementById(
+      "question"
+    );
+
+
+  input.value =
+    text;
+
+
+  input.focus();
+
+}
+
+
+/* =========================================================
+   LOAD DOCUMENTS
+========================================================= */
+
+async function loadDocs() {
+
+  try {
+
+    const response =
+      await fetch(
+        "/documents"
+      );
+
+
+    const docs =
+      await response.json();
+
+
+    const container =
+      document.getElementById(
+        "docs"
+      );
+
+
+    if (!docs.length) {
+
+      container.innerHTML =
+        `<div class="empty-docs">
+          No documents yet
+        </div>`;
+
+      return;
+
+    }
+
+
+    container.innerHTML =
+      docs.map(
+        doc => `
+
+          <div class="document-item">
+
+            <div class="document-icon">
+              PDF
+            </div>
+
+
+            <div class="document-info">
+
+              <div class="document-name">
+
+                ${escapeHtml(
+                  doc.filename
+                )}
+
+              </div>
+
+
+              <div class="document-meta">
+
+                ${doc.chunk_count}
+                chunks
+
+              </div>
+
+            </div>
+
+          </div>
+
+        `
+      ).join("");
+
+  }
+
+  catch (error) {
+
+    console.error(
+      "Unable to load documents",
+      error
+    );
+
+  }
+
+}
+
+
+/* =========================================================
    FORMAT ANSWER
-========================= */
+========================================================= */
 
 function formatAnswer(text) {
 
   if (!text) return "";
 
+
   return escapeHtml(text)
-    .replace(/\n\n/g, "<br><br>")
-    .replace(/\n/g, "<br>");
+
+    .replace(
+      /\n\n/g,
+      "<br><br>"
+    )
+
+    .replace(
+      /\n/g,
+      "<br>"
+    );
 
 }
 
 
-/* =========================
+/* =========================================================
    ESCAPE HTML
-========================= */
+========================================================= */
 
 function escapeHtml(value) {
 
-  return String(value).replace(/[&<>"']/g, function (char) {
+  return String(value).replace(
+    /[&<>"']/g,
+    function(char) {
 
-    return {
-      "&": "&amp;",
-      "<": "&lt;",
-      ">": "&gt;",
-      '"': "&quot;",
-      "'": "&#039;"
-    }[char];
+      return {
 
-  });
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#039;"
+
+      }[char];
+
+    }
+  );
 
 }
 
 
-/* =========================
+/* =========================================================
    ENTER TO SEND
-========================= */
+========================================================= */
 
 document
-  .getElementById("question")
-  .addEventListener("keydown", function(event) {
+  .getElementById(
+    "question"
+  )
+  .addEventListener(
+    "keydown",
+    function(event) {
 
-    if (event.key === "Enter") {
+      if (
+        event.key === "Enter"
+      ) {
 
-      event.preventDefault();
+        event.preventDefault();
 
-      ask();
+        ask();
+
+      }
 
     }
+  );
 
-  });
 
-
-/* =========================
+/* =========================================================
    INITIAL LOAD
-========================= */
+========================================================= */
 
 loadDocs();
+
+loadHistory();
+
 
 </script>
 
 </body>
+
 </html>
+```
