@@ -1,6 +1,6 @@
-
 import os
 import sqlite3
+import traceback
 
 from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
@@ -115,6 +115,9 @@ def upload():
 
     except Exception as e:
 
+        print("UPLOAD ERROR:")
+        traceback.print_exc()
+
         return jsonify({
             "error": str(e)
         }), 500
@@ -175,7 +178,6 @@ def get_chat(chat_id):
             "error": "Chat not found."
         }), 404
 
-
     messages = conn.execute("""
         SELECT
             role,
@@ -187,7 +189,6 @@ def get_chat(chat_id):
     """, (chat_id,)).fetchall()
 
     conn.close()
-
 
     return jsonify({
 
@@ -221,16 +222,13 @@ def chat():
         silent=True
     ) or {}
 
-
     question = (
         data.get("question") or ""
     ).strip()
 
-
     chat_id = data.get(
         "chat_id"
     )
-
 
     if not question:
 
@@ -238,11 +236,11 @@ def chat():
             "error": "Please enter a question."
         }), 400
 
+    conn = None
 
     try:
 
         conn = get_db()
-
 
         # -------------------------------------------------
         # CREATE CHAT WHEN FIRST MESSAGE IS SENT
@@ -259,15 +257,12 @@ def chat():
                     + "..."
                 )
 
-
             cursor = conn.execute("""
                 INSERT INTO chats (title)
                 VALUES (?)
             """, (title,))
 
-
             chat_id = cursor.lastrowid
-
 
         else:
 
@@ -277,15 +272,11 @@ def chat():
                 WHERE id = ?
             """, (chat_id,)).fetchone()
 
-
             if not existing_chat:
-
-                conn.close()
 
                 return jsonify({
                     "error": "Chat not found."
                 }), 404
-
 
         # -------------------------------------------------
         # SAVE USER MESSAGE
@@ -302,7 +293,6 @@ def chat():
             question
         ))
 
-
         # -------------------------------------------------
         # RAG ANSWER
         # -------------------------------------------------
@@ -311,12 +301,10 @@ def chat():
             question
         )
 
-
         answer = result.get(
             "answer",
             ""
         )
-
 
         # -------------------------------------------------
         # SAVE AI MESSAGE
@@ -333,7 +321,6 @@ def chat():
             answer
         ))
 
-
         # -------------------------------------------------
         # UPDATE CHAT TIME
         # -------------------------------------------------
@@ -344,21 +331,40 @@ def chat():
             WHERE id = ?
         """, (chat_id,))
 
-
         conn.commit()
-        conn.close()
-
 
         result["chat_id"] = chat_id
 
         return jsonify(result)
 
-
     except Exception as e:
+
+        # IMPORTANT:
+        # Print the complete error traceback to Render Logs.
+        print("========================================")
+        print("CHAT ERROR")
+        print("========================================")
+        print(f"Error: {e}")
+        traceback.print_exc()
+        print("========================================")
+
+        if conn is not None:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
 
         return jsonify({
             "error": str(e)
         }), 500
+
+    finally:
+
+        if conn is not None:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 
 # =========================================================
@@ -373,13 +379,11 @@ def delete_chat(chat_id):
 
     conn = get_db()
 
-
     chat = conn.execute("""
         SELECT id
         FROM chats
         WHERE id = ?
     """, (chat_id,)).fetchone()
-
 
     if not chat:
 
@@ -389,22 +393,18 @@ def delete_chat(chat_id):
             "error": "Chat not found."
         }), 404
 
-
     conn.execute("""
         DELETE FROM messages
         WHERE chat_id = ?
     """, (chat_id,))
-
 
     conn.execute("""
         DELETE FROM chats
         WHERE id = ?
     """, (chat_id,))
 
-
     conn.commit()
     conn.close()
-
 
     return jsonify({
         "message": "Chat deleted successfully."
@@ -430,6 +430,9 @@ def delete_document(document_id):
         )
 
     except Exception as e:
+
+        print("DELETE DOCUMENT ERROR:")
+        traceback.print_exc()
 
         return jsonify({
             "error": str(e)
