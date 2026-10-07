@@ -1,7 +1,8 @@
+
 import json
 import uuid
-from pathlib import Path
 import hashlib
+from pathlib import Path
 
 from google import genai
 from google.genai import types
@@ -21,7 +22,6 @@ from embeddings import BGEEmbeddings
 
 
 class RAGEngine:
-
     def __init__(self, config):
         self.config = config
 
@@ -48,14 +48,12 @@ class RAGEngine:
     # =========================================================
 
     def _ensure_collection(self):
-
         existing = {
             c.name
             for c in self.qdrant.get_collections().collections
         }
 
         if self.collection not in existing:
-
             self.qdrant.create_collection(
                 collection_name=self.collection,
                 vectors_config=VectorParams(
@@ -74,17 +72,14 @@ class RAGEngine:
             pass
 
     # =========================================================
-    # INDEX UPLOADED PDF
+    # DOCUMENT UPLOAD / INDEXING
     # =========================================================
 
     def index_uploaded_file(self, file, filename):
-
         data = file.read()
 
         if not data:
-            raise ValueError(
-                "The uploaded document is empty."
-            )
+            raise ValueError("The uploaded document is empty.")
 
         document_id = hashlib.sha256(data).hexdigest()
 
@@ -98,9 +93,7 @@ class RAGEngine:
                 must=[
                     FieldCondition(
                         key="document_id",
-                        match=MatchValue(
-                            value=document_id
-                        ),
+                        match=MatchValue(value=document_id),
                     )
                 ]
             ),
@@ -110,7 +103,6 @@ class RAGEngine:
         )
 
         if existing[0]:
-
             return {
                 "message": "This document is already indexed.",
                 "document_id": document_id,
@@ -119,7 +111,7 @@ class RAGEngine:
             }
 
         # -----------------------------------------------------
-        # PROCESS DOCUMENT
+        # PROCESS PDF
         # -----------------------------------------------------
 
         processed = process_document(
@@ -129,76 +121,86 @@ class RAGEngine:
             self.config["chunk_overlap"],
         )
 
-        texts = [
-            chunk["text"]
-            for chunk in processed["chunks"]
-        ]
+        chunks = processed["chunks"]
+
+        if not chunks:
+            raise ValueError(
+                "No readable text was found in the uploaded document."
+            )
 
         # -----------------------------------------------------
-        # CREATE EMBEDDINGS
+        # EMBEDDINGS
+        #
+        # IMPORTANT:
+        # Do NOT embed all chunks at once.
+        # Process them in small batches to reduce Render memory.
         # -----------------------------------------------------
 
-        vectors = self.embeddings.encode(texts)
-
-        # -----------------------------------------------------
-        # CREATE QDRANT POINTS
-        # -----------------------------------------------------
+        batch_size = 8
 
         points = []
 
-        for chunk, vector in zip(
-            processed["chunks"],
-            vectors,
-        ):
+        for start in range(0, len(chunks), batch_size):
+            batch_chunks = chunks[start:start + batch_size]
 
-            point = PointStruct(
-                id=str(uuid.uuid4()),
-                vector=vector,
-                payload={
-                    **chunk,
-                    "document_id": document_id,
-                    "filename": filename,
-                },
+            batch_texts = [
+                chunk["text"]
+                for chunk in batch_chunks
+            ]
+
+            print(
+                f"Creating embeddings: "
+                f"{start + 1}-{min(start + batch_size, len(chunks))} "
+                f"of {len(chunks)} chunks"
             )
 
-            points.append(point)
+            batch_vectors = self.embeddings.encode(batch_texts)
+
+            for chunk, vector in zip(
+                batch_chunks,
+                batch_vectors
+            ):
+                points.append(
+                    PointStruct(
+                        id=str(uuid.uuid4()),
+                        vector=vector,
+                        payload={
+                            **chunk,
+                            "document_id": document_id,
+                        },
+                    )
+                )
+
+            # -------------------------------------------------
+            # Upload each small batch immediately.
+            # This avoids keeping a huge list in memory.
+            # -------------------------------------------------
+
+            if points:
+                self.qdrant.upsert(
+                    collection_name=self.collection,
+                    points=points,
+                )
+
+                points = []
 
         # -----------------------------------------------------
-        # SAVE TO QDRANT
+        # SAVE DOCUMENT METADATA
         # -----------------------------------------------------
 
-        if points:
-
-            self.qdrant.upsert(
-                collection_name=self.collection,
-                points=points,
-            )
-
-        # -----------------------------------------------------
-        # LOCAL METADATA
-        # -----------------------------------------------------
-
-        Path("documents").mkdir(
-            exist_ok=True
-        )
-
-        metadata_path = (
-            Path("documents")
-            / f"{document_id}.json"
-        )
+        Path("documents").mkdir(exist_ok=True)
 
         with open(
-            metadata_path,
+            Path("documents") / f"{document_id}.json",
             "w",
             encoding="utf-8",
         ) as f:
-
             json.dump(
                 {
                     "document_id": document_id,
                     "filename": filename,
                     "file_type": processed["file_type"],
-                    "chunk_count": len(points),
+                    "chunk_count": len(chunks),
                 },
                 f,
                 ensure_ascii=False,
@@ -209,7 +211,7 @@ class RAGEngine:
             "message": f"{filename} indexed successfully.",
             "document_id": document_id,
             "filename": filename,
-            "chunks": len(points),
+            "chunks": len(chunks),
             "duplicate": False,
         }
 
@@ -218,15 +220,12 @@ class RAGEngine:
     # =========================================================
 
     def list_documents(self):
-
         documents = {}
 
         try:
-
             offset = None
 
             while True:
-
                 points, next_offset = self.qdrant.scroll(
                     collection_name=self.collection,
                     offset=offset,
@@ -236,7 +235,6 @@ class RAGEngine:
                 )
 
                 for point in points:
-
                     payload = point.payload or {}
 
                     document_id = payload.get(
@@ -246,24 +244,18 @@ class RAGEngine:
                     if not document_id:
                         continue
 
-                    filename = (
-                        payload.get("filename")
-                        or payload.get("source")
-                        or "Unknown"
-                    )
-
                     if document_id not in documents:
-
                         documents[document_id] = {
                             "document_id": document_id,
-                            "filename": filename,
+                            "filename": payload.get(
+                                "source",
+                                "Unknown",
+                            ),
                             "file_type": "pdf",
                             "chunk_count": 0,
                         }
 
-                    documents[
-                        document_id
-                    ]["chunk_count"] += 1
+                    documents[document_id]["chunk_count"] += 1
 
                 if next_offset is None:
                     break
@@ -271,7 +263,6 @@ class RAGEngine:
                 offset = next_offset
 
         except Exception as e:
-
             print(
                 f"Error listing documents from Qdrant: {e}"
             )
@@ -280,7 +271,7 @@ class RAGEngine:
             documents.values(),
             key=lambda x: x.get(
                 "filename",
-                ""
+                "",
             ).lower(),
         )
 
@@ -289,7 +280,6 @@ class RAGEngine:
     # =========================================================
 
     def delete_document(self, document_id):
-
         self.qdrant.delete(
             collection_name=self.collection,
             points_selector=Filter(
@@ -324,25 +314,28 @@ class RAGEngine:
     def _generate(self, question, context):
 
         system_instruction = """
-You are a helpful AI assistant with two capabilities.
+You are a helpful AI assistant.
 
-1. DOCUMENT MODE:
-If retrieved document context is provided and is relevant
-to the user's question, use it as the primary source.
-Do not invent facts about the uploaded documents.
-Mention the source or page when useful.
+DOCUMENT MODE:
+If relevant uploaded-document context is provided,
+use that context as the primary source.
 
-2. GENERAL MODE:
-If the question is not answerable from the uploaded
-documents, answer it using your general knowledge.
-Clearly do not claim that general-knowledge information
-came from the uploaded documents.
+Do not invent facts about uploaded documents.
+
+When useful, mention the document source and page number.
+
+GENERAL MODE:
+If the question cannot be answered from the uploaded
+documents, answer using your general knowledge.
+
+Do not claim that general-knowledge information came
+from an uploaded document.
 
 Be concise, accurate, and helpful.
 
-If the user asks about current or time-sensitive
-information, explain that your knowledge may not be
-current unless current data has been provided.
+For current or time-sensitive information, explain that
+your knowledge may not be current unless current data
+has been provided.
 """
 
         prompt = f"""
@@ -364,12 +357,9 @@ User question:
             ),
         )
 
-        if not response:
-            raise RuntimeError(
-                "Gemini returned no response."
-            )
-
-        if not (response.text or "").strip():
+        if not response or not (
+            response.text or ""
+        ).strip():
             raise RuntimeError(
                 "Gemini returned an empty response."
             )
@@ -387,38 +377,28 @@ User question:
         context = ""
         sources = []
 
-        # -----------------------------------------------------
-        # SEARCH UPLOADED DOCUMENTS
-        # -----------------------------------------------------
-
         if documents:
 
             query_vector = self.embeddings.encode(
                 question
             )[0]
 
-            result = self.qdrant.query_points(
+            hits = self.qdrant.query_points(
                 collection_name=self.collection,
                 query=query_vector,
                 limit=self.config["top_k"],
                 with_payload=True,
-            )
-
-            hits = result.points
-
-            # -------------------------------------------------
-            # ONLY USE RELEVANT DOCUMENT CONTEXT
-            # -------------------------------------------------
+            ).points
 
             relevant = [
-                hit
-                for hit in hits
-                if float(hit.score) >= 0.35
+                h
+                for h in hits
+                if float(h.score) >= 0.35
             ]
 
             context_parts = []
 
-            for index, hit in enumerate(
+            for i, hit in enumerate(
                 relevant,
                 start=1,
             ):
@@ -426,30 +406,22 @@ User question:
                 payload = hit.payload or {}
 
                 page = payload.get("page")
-
-                source = (
-                    payload.get("filename")
-                    or payload.get("source")
-                    or "Unknown"
+                source = payload.get(
+                    "source",
+                    "Unknown",
                 )
 
-                page_text = ""
-
-                if page:
-                    page_text = (
-                        f" — Page {page}"
-                    )
-
-                text = payload.get(
-                    "text",
-                    "",
+                page_text = (
+                    f" — Page {page}"
+                    if page
+                    else ""
                 )
 
                 context_parts.append(
-                    f"[Context {index}] "
+                    f"[Context {i}] "
                     f"Source: {source}"
                     f"{page_text}\n"
-                    f"{text}"
+                    f"{payload.get('text', '')}"
                 )
 
                 sources.append(
@@ -457,7 +429,7 @@ User question:
                         "source": source,
                         "page": page,
                         "score": round(
-                            float(hit.score),
+                            float(h.score),
                             4,
                         ),
                     }
@@ -466,10 +438,6 @@ User question:
             context = "\n\n".join(
                 context_parts
             )
-
-        # -----------------------------------------------------
-        # GEMINI ANSWER
-        # -----------------------------------------------------
 
         answer = self._generate(
             question,
