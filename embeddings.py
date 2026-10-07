@@ -1,4 +1,4 @@
-```python
+
 from fastembed import TextEmbedding
 
 
@@ -23,4 +23,4 @@ class BGEEmbeddings:
 
     def dimension(self):
         return 384
-```
+
