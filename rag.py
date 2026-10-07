@@ -1,4 +1,3 @@
-
 import json
 import uuid
 import hashlib
@@ -130,14 +129,9 @@ class RAGEngine:
 
         # -----------------------------------------------------
         # EMBEDDINGS
-        #
-        # IMPORTANT:
-        # Do NOT embed all chunks at once.
-        # Process them in small batches to reduce Render memory.
         # -----------------------------------------------------
 
         batch_size = 8
-
         points = []
 
         for start in range(0, len(chunks), batch_size):
@@ -172,8 +166,7 @@ class RAGEngine:
                 )
 
             # -------------------------------------------------
-            # Upload each small batch immediately.
-            # This avoids keeping a huge list in memory.
+            # Upload each batch immediately
             # -------------------------------------------------
 
             if points:
@@ -390,6 +383,9 @@ User question:
                 with_payload=True,
             ).points
 
+            # IMPORTANT:
+            # The loop variable is "h",
+            # so we must use h.score here.
             relevant = [
                 h
                 for h in hits
@@ -406,6 +402,7 @@ User question:
                 payload = hit.payload or {}
 
                 page = payload.get("page")
+
                 source = payload.get(
                     "source",
                     "Unknown",
@@ -429,7 +426,7 @@ User question:
                         "source": source,
                         "page": page,
                         "score": round(
-                            float(h.score),
+                            float(hit.score),
                             4,
                         ),
                     }
