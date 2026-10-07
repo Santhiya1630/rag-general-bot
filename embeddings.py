@@ -1,23 +1,26 @@
+```python
 from fastembed import TextEmbedding
+
 
 class BGEEmbeddings:
     """
-    Lightweight wrapper using FastEmbed.
-    The class name is kept for compatibility with the existing RAG code.
+    Lightweight FastEmbed embedding wrapper.
+    Keeps the existing class name for RAG compatibility.
     """
 
-    def __init__(self, model_name):
-        # FastEmbed expects the full Sentence Transformers model name.
-        aliases = {
-            "all-MiniLM-L6-v2": "sentence-transformers/all-MiniLM-L6-v2"
-        }
-        model_name = aliases.get(model_name, model_name)
-        self.model = TextEmbedding(model_name=model_name)
+    def __init__(self, model_name=None):
+        # Use a small 384-dimensional model supported by FastEmbed.
+        self.model = TextEmbedding(
+            model_name="sentence-transformers/all-MiniLM-L6-v2"
+        )
 
     def encode(self, texts):
         if isinstance(texts, str):
             texts = [texts]
-        return [v.tolist() for v in self.model.embed(texts)]
+
+        embeddings = self.model.embed(texts)
+        return [vector.tolist() for vector in embeddings]
 
     def dimension(self):
         return 384
+```
